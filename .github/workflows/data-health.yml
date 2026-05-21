@@ -1,0 +1,78 @@
+name: Data Source Health Check
+
+on:
+  schedule:
+    - cron: "0 6 * * 0"   # Sunday 6:00 AM UTC
+  workflow_dispatch:        # Manual trigger
+
+jobs:
+  data-health:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Check CFPB API endpoint health
+        run: |
+          python -c "
+          from fair_lending_screener import check_data_source
+          result = check_data_source()
+          print(f'CFPB API reachable: {result[\"reachable\"]} (HTTP {result[\"status_code\"]})')
+          assert result['reachable'], 'CFPB API endpoint is DOWN'
+          "
+
+      - name: Run minimal live analysis (smoke test)
+        env:
+          FLS_LIVE_TESTS: "1"
+        run: |
+          python -c "
+          import warnings
+          from fair_lending_screener import load_from_api, prepare_for_analysis, adjusted_denial_disparity
+
+          print('Fetching 2023 HMDA data (sample)...')
+          raw = load_from_api(year=2023, state='IL', limit=5000)
+          print(f'Loaded {len(raw)} records')
+
+          assert len(raw) > 100, f'Expected >100 records, got {len(raw)} — API may have changed shape'
+
+          with warnings.catch_warnings():
+              warnings.simplefilter('ignore')
+              prepared = prepare_for_analysis(raw, validate_controls=False)
+
+          n_black = (prepared['derived_race'] == 'Black or African American').sum()
+          n_white = (prepared['derived_race'] == 'White').sum()
+          print(f'Black: {n_black}, White: {n_white}')
+
+          if n_black >= 50 and n_white >= 50:
+              result = adjusted_denial_disparity(
+                  prepared,
+                  protected_class='Black or African American',
+                  comparison_class='White',
+                  min_sample_size=50,
+              )
+              print(f'Adjusted OR: {result.adjusted_odds_ratio:.3f}')
+              print(f'p-value: {result.p_value:.4f}')
+              print(f'Sample size: {result.sample_size}')
+              assert result.adjusted_odds_ratio > 0, 'Adjusted OR must be positive'
+              assert 0 <= result.p_value <= 1, 'p-value out of range'
+              print('Data health check PASSED')
+          else:
+              print(f'Skipping regression: insufficient group sizes (Black={n_black}, White={n_white})')
+              print('Data health check PASSED (API reachable, data shape valid)')
+          "
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Data source health check failed. CFPB API may have moved or changed shape."
+          echo "::error::Check https://ffiec.cfpb.gov/api/public/ and update data.py if the endpoint changed."

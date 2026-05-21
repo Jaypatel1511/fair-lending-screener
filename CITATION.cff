@@ -1,0 +1,60 @@
+cff-version: 1.2.0
+message: "If you use this software in research or journalism, please cite it as below."
+type: software
+title: "fair-lending-screener"
+version: 0.1.0
+date-released: "2026-05-21"
+url: "https://github.com/Jaypatel1511/fair-lending-screener"
+repository-code: "https://github.com/Jaypatel1511/fair-lending-screener"
+license: MIT
+abstract: >
+  Statistical disparate impact analysis for HMDA mortgage lending data.
+  Implements adjusted denial disparity analysis using binary logistic regression
+  with FFIEC-standard controls. Methodology follows FFIEC Interagency Fair Lending
+  Examination Procedures (2009) and The Markup (2021) national model specification.
+  Intended for community advocates, investigative journalists, academic researchers,
+  and fair housing nonprofits. Not a substitute for full fair lending examination.
+authors:
+  - family-names: "Patel"
+    given-names: "Jay"
+    email: "thejaypatel1511@gmail.com"
+keywords:
+  - fair-lending
+  - hmda
+  - disparate-impact
+  - fair-housing
+  - mortgage
+  - logistic-regression
+  - community-development
+references:
+  - type: article
+    title: "A simulation study of the number of events per variable in logistic regression analysis"
+    authors:
+      - family-names: "Peduzzi"
+        given-names: "P."
+      - family-names: "Concato"
+        given-names: "J."
+      - family-names: "Kemper"
+        given-names: "E."
+      - family-names: "Holford"
+        given-names: "T.R."
+      - family-names: "Feinstein"
+        given-names: "A.R."
+    journal: "Journal of Clinical Epidemiology"
+    volume: 49
+    issue: 12
+    start: 1373
+    end: 1379
+    year: 1996
+    doi: "10.1016/S0895-4356(96)00236-3"
+  - type: article
+    title: "How We Investigated Racial Disparities in Federal Mortgage Data"
+    authors:
+      - family-names: "Martinez"
+        given-names: "Emmanuel"
+      - family-names: "Kirchner"
+        given-names: "Lauren"
+    publisher:
+      name: "The Markup"
+    year: 2021
+    url: "https://themarkup.org/show-your-work/2021/08/25/how-we-investigated-racial-disparities-in-federal-mortgage-data"

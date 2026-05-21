@@ -1,0 +1,35 @@
+name: Tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package and dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests (excluding live API tests)
+        run: pytest -v -m "not live" --tb=short
+
+      - name: Verify dual-import shim
+        run: |
+          python -c "import fair_lending_screener; print('fair_lending_screener OK:', fair_lending_screener.__version__)"
+          python -c "import fairlendingscreener; print('fairlendingscreener OK:', fairlendingscreener.__version__)"
