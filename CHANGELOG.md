@@ -6,6 +6,60 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.1.1] — 2026-05-22
+
+### Breaking Changes
+
+**BREAKING:** `data_year` is now a required parameter on `adjusted_denial_disparity()`. Previously optional with a `UserWarning`; now required with no default. Provenance blocks will always contain a real HMDA data year. Callers must update to pass `data_year=<int>` explicitly.
+
+### Fixed
+
+**CRIT-1: Contradictory disclaimer in non-significant interpretation**
+- `_build_interpretation()` now appends `STANDARD_DISCLAIMER` (identifies a significant disparity) only when `is_statistically_significant=True`
+- Non-significant results append `STANDARD_DISCLAIMER_NON_SIGNIFICANT`: "This analysis did NOT identify a statistically significant adjusted disparity..."
+- Previously both paths appended the significant-case disclaimer, producing a self-contradicting interpretation string
+
+**CRIT-2: `controls_used` included dropped controls**
+- The second assignment `controls_used = [c for c in feature_cols if ...]` (which used the pre-drop list) has been removed
+- `DisparityResult.controls_used` now correctly lists only controls that survived the zero-variance drop and were actually in the fitted model
+- Added regression test `test_controls_used_excludes_dropped_controls`
+
+**HIGH-1: Peduzzi EPV minimum sample size corrected**
+- Default `min_sample_size` raised from 100 to 500
+- `docs/methodology.md` §"Sample Size Requirements" corrected: Peduzzi's EPV applies to *events* (denials), not total observations. At 10% denial rate, 900+ total observations are needed for EPV=10 with 9 predictors. The 500 default is a permissive threshold, not a Peduzzi-compliant floor.
+
+**HIGH-2: Data year added to provenance**
+- `adjusted_denial_disparity()` now requires `data_year` as a keyword-only parameter (no default). The HMDA data year is always recorded in `DisparityResult.provenance["data_year"]`, enabling full reproducibility. See Breaking Changes.
+
+**HIGH-3: `business_or_commercial_purpose` filter implemented**
+- `prepare_for_analysis()` now applies Filter 9: if the `business_or_commercial_purpose` column is present, keep only non-business loans (value == 2), per The Markup (2021) specification
+- If the column is absent (pre-2018 data or synthetic samples), a `UserWarning` is emitted when `validate_controls=True`
+- `docs/methodology.md` Dataset Filters table updated
+
+**HIGH-4: Methodology and limitations docs bundled in wheel**
+- `docs/methodology.md` and `docs/limitations.md` are now copied into `fair_lending_screener/` as `_methodology_doc.md` and `_limitations_doc.md` and included in the wheel via `pyproject.toml` package-data
+- `fair_lending_screener.get_methodology_path()` and `get_limitations_path()` return the installed filesystem paths
+- Users can now `open(fls.get_methodology_path()).read()` from a pip-installed package
+
+**HIGH-5: Positive guardrail path now has an automated test**
+- `test_report_with_lender_name_significant_strong_model` verifies that a lender name appears in the report headline when all guardrails pass (p<0.05, converged, pseudo-R²≥0.05, n≥100)
+- Previously only the negative path (suppression) was tested
+
+**MED-2: data-health workflow now validates column schema**
+- Added dedicated "Validate CFPB API column schema" step that fails loudly if `action_taken`, `derived_race`, `applicant_income`, `loan_amount`, `loan_to_value_ratio`, `debt_to_income_ratio`, or `property_value` are absent
+- Smoke test now runs with `validate_controls=True` and fails if controls are missing
+- `data_year=2023` passed explicitly to `adjusted_denial_disparity()` in the smoke test
+
+### Known Issues
+
+- **MED-1:** `docs/methodology.md` regression equation (lines 164–168) references β₁₀–β₁₃ for `loan_type_dummy_2`, `lien_status_dummy_2`, `occupancy_type_dummy_2`, `occupancy_type_dummy_3`. These dummies are not created by `_FFIEC_CONTROLS` because the FFIEC filter restricts `loan_type`, `lien_status`, and `occupancy_type` to single values, making the dummies zero-variance. The equation will be corrected in v0.1.2.
+
+### Changed
+
+- `ALPHA_DISCLAIMER` version string updated to v0.1.1
+
+---
+
 ## [0.1.0] — 2026-05-21
 
 ### Added

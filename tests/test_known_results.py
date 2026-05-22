@@ -88,6 +88,7 @@ def test_unadjusted_or_matches_hand_calculation():
             comparison_class="White",
             controls=[],
             min_sample_size=50,
+            data_year=2023,
         )
 
     assert result.unadjusted_odds_ratio == pytest.approx(expected_or, abs=1e-4), (
@@ -137,6 +138,7 @@ def test_adjusted_or_with_one_control():
             comparison_class="White",
             controls=["log_income"],
             min_sample_size=50,
+            data_year=2023,
         )
 
     # Adjusted OR should be positive (Black still faces higher denial after income control)
@@ -181,6 +183,7 @@ def test_calibration_range_synthetic_sample():
             protected_class="Black or African American",
             comparison_class="White",
             min_sample_size=100,
+            data_year=2023,
         )
 
     # Basic numeric sanity
@@ -252,6 +255,7 @@ def test_live_calibration_2019_national():
         protected_class="Black or African American",
         comparison_class="White",
         min_sample_size=500,
+        data_year=2019,
     )
 
     lo = 1.6

@@ -18,7 +18,7 @@ def result():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         prepared = prepare_for_analysis(raw, validate_controls=False)
-        return adjusted_denial_disparity(prepared, min_sample_size=100)
+        return adjusted_denial_disparity(prepared, min_sample_size=100, data_year=2023)
 
 
 def test_report_is_string(result):
@@ -123,6 +123,52 @@ def _make_nonsig_result():
             "timestamp": "2026-05-21T00:00:00Z",
             "input_parameters": {},
         },
+    )
+
+
+def test_report_with_lender_name_significant_strong_model():
+    """When all guardrails pass (significant, converged, pseudo-R²≥0.05), lender name is in headline."""
+    from fair_lending_screener.disparity import DisparityResult
+    from fair_lending_screener.methodology import STANDARD_LIMITATIONS, FFIEC_FAIR_LENDING_PROCEDURES
+
+    strong_result = DisparityResult(
+        protected_class="Black or African American",
+        comparison_class="White",
+        unadjusted_odds_ratio=2.1,
+        adjusted_odds_ratio=1.9,
+        confidence_interval_95=(1.4, 2.6),
+        p_value=0.002,
+        sample_size=5000,
+        sample_size_protected=1200,
+        sample_size_comparison=3800,
+        controls_used=["log_income", "log_loan_amount", "loan_to_value_ratio"],
+        dropped_controls=[],
+        model_diagnostics={
+            "pseudo_r2_mcfadden": 0.18,
+            "log_likelihood": -2800.0,
+            "converged": True,
+            "n_msa_dummies": 15,
+            "n_obs_in_model": 5000,
+            "pseudo_r2_flag": "OK",
+        },
+        methodology_citation=FFIEC_FAIR_LENDING_PROCEDURES,
+        limitations=STANDARD_LIMITATIONS.copy(),
+        is_statistically_significant=True,
+        interpretation="Statistically significant adjusted disparity found.",
+        provenance={
+            "package_version": "0.1.1",
+            "dependency_versions": {},
+            "data_source_url": "test",
+            "timestamp": "2026-05-21T00:00:00Z",
+            "input_parameters": {},
+        },
+    )
+
+    report = generate_disparity_report(strong_result, lender_name="Test Community Bank")
+    headline_section = report.split("## Headline Finding")[1].split("##")[0]
+    assert "Test Community Bank" in headline_section, (
+        f"Expected 'Test Community Bank' in report headline when all guardrails pass. "
+        f"Headline section: {headline_section[:300]}"
     )
 
 

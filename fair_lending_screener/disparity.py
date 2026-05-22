@@ -34,6 +34,7 @@ from .methodology import (
     MARKUP_METHODOLOGY_CITATION,
     STANDARD_LIMITATIONS,
     STANDARD_DISCLAIMER,
+    STANDARD_DISCLAIMER_NON_SIGNIFICANT,
     WOOLDRIDGE_OVB_CITATION,
 )
 
@@ -112,7 +113,9 @@ def adjusted_denial_disparity(
     comparison_class: str = "White",
     controls: Optional[list[str]] = None,
     msa: Optional[str] = None,
-    min_sample_size: int = 100,
+    min_sample_size: int = 500,
+    *,
+    data_year: int,
 ) -> DisparityResult:
     """
     Compute the adjusted denial disparity between a protected class and a comparison class.
@@ -134,7 +137,12 @@ def adjusted_denial_disparity(
                           (value of msa_md column).
         min_sample_size:  Minimum combined observations required. Below this
                           threshold, InsufficientDataError is raised.
-                          Citation: Peduzzi et al. (1996), J. Clin. Epidemiol. 49(12):1373–1379.
+                          Default raised from 100 to 500 in v0.1.1; see
+                          docs/methodology.md §"Sample Size Requirements" for the
+                          corrected Peduzzi et al. (1996) EPV derivation.
+        data_year:        HMDA data year analyzed (e.g., 2023). Required.
+                          Recorded in provenance for reproducibility. Provenance
+                          blocks always contain a real HMDA data year.
 
     Returns:
         DisparityResult dataclass.
@@ -282,8 +290,6 @@ def adjusted_denial_disparity(
     pseudo_r2 = float(result.prsquared)
     log_lik = float(result.llf)
 
-    controls_used = [c for c in feature_cols if c != "protected_class_ind"]
-
     diagnostics = {
         "pseudo_r2_mcfadden": pseudo_r2,
         "log_likelihood": log_lik,
@@ -314,6 +320,7 @@ def adjusted_denial_disparity(
         controls=controls,
         msa=msa,
         min_sample_size=min_sample_size,
+        data_year=data_year,
     )
 
     return DisparityResult(
@@ -494,13 +501,14 @@ def _build_interpretation(
 
     unadj_str = f"{unadjusted_or:.2f}×" if not (isinstance(unadjusted_or, float) and np.isnan(unadjusted_or)) else "N/A"
 
+    disclaimer = STANDARD_DISCLAIMER if is_sig else STANDARD_DISCLAIMER_NON_SIGNIFICANT
+
     return (
         f"Analysis of {n_total:,} applications ({protected_class} vs. {comparison_class}) "
         f"found {sig_phrase}. "
         f"Unadjusted denial rate disparity: {unadj_str}. "
         f"{direction} "
-        f"This is a screening signal, not a finding of discrimination. "
-        f"{STANDARD_DISCLAIMER}"
+        f"{disclaimer}"
     )
 
 
@@ -510,6 +518,7 @@ def _build_provenance(
     controls: Optional[list[str]],
     msa: Optional[str],
     min_sample_size: int,
+    data_year: int,
 ) -> dict:
     """Build the provenance block for legal/reproducibility defensibility (addition A2)."""
     try:
@@ -542,6 +551,7 @@ def _build_provenance(
             "numpy": np_version,
         },
         "data_source_url": CFPB_API_BASE,
+        "data_year": data_year,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "input_parameters": {
             "protected_class": protected_class,

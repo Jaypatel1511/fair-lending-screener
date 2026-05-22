@@ -94,6 +94,7 @@ result = fls.adjusted_denial_disparity(
     df,
     protected_class="Black or African American",
     comparison_class="White",
+    data_year=2023,
 )
 
 # Key numbers
@@ -130,6 +131,7 @@ result = fls.adjusted_denial_disparity(
     df,
     protected_class="Black or African American",
     comparison_class="White",
+    data_year=2023,
 )
 print(f"Adjusted OR: {result.adjusted_odds_ratio:.2f}×, p={result.p_value:.4f}")
 ```

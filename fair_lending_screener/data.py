@@ -317,6 +317,20 @@ def prepare_for_analysis(
     if "loan_to_value_ratio" in df.columns:
         df = df[df["loan_to_value_ratio"].notna() & (df["loan_to_value_ratio"] <= _MAX_LTV)]
 
+    # Filter 9: non-business-purpose loans only (The Markup filter spec).
+    # HMDA field business_or_commercial_purpose: 1 = yes (business), 2 = no (non-business).
+    # Keep non-business loans (== 2). Present in 2018+ HMDA data.
+    if "business_or_commercial_purpose" in df.columns:
+        df = df[df["business_or_commercial_purpose"] == 2]
+    elif validate_controls:
+        warnings.warn(
+            "'business_or_commercial_purpose' column not found — business-purpose loans "
+            "cannot be excluded per The Markup filter specification. Use real HMDA 2018+ "
+            "data from load_from_api() for the complete filter set.",
+            UserWarning,
+            stacklevel=2,
+        )
+
     if df.empty:
         raise ValueError(
             "DataFrame is empty after applying FFIEC dataset filters. "

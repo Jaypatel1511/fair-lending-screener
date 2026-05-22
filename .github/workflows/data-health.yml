@@ -31,6 +31,42 @@ jobs:
           assert result['reachable'], 'CFPB API endpoint is DOWN'
           "
 
+      - name: Validate CFPB API column schema
+        env:
+          FLS_LIVE_TESTS: "1"
+        run: |
+          python -c "
+          from fair_lending_screener import load_from_api
+
+          print('Fetching 2023 HMDA data for schema validation...')
+          raw = load_from_api(year=2023, state='IL', limit=2000)
+          print(f'Loaded {len(raw)} records')
+
+          assert len(raw) > 100, f'Expected >100 records, got {len(raw)} — API may have changed shape'
+
+          # FFIEC-standard controls required for the full model.
+          # If any of these are missing, prepare_for_analysis() degrades silently;
+          # this check fails loudly instead. (MED-2 fix: nmtc-mapper lesson applied)
+          REQUIRED_COLUMNS = [
+              'action_taken',
+              'derived_race',
+              'applicant_income',
+              'loan_amount',
+              'loan_to_value_ratio',
+              'debt_to_income_ratio',
+              'property_value',
+          ]
+          missing = [c for c in REQUIRED_COLUMNS if c not in raw.columns]
+          if missing:
+              raise AssertionError(
+                  f'CFPB API response is missing required column(s): {missing}. '
+                  f'CFPB may have renamed or removed these fields. '
+                  f'Update data.py column mapping before the next analysis run. '
+                  f'Available columns: {sorted(raw.columns.tolist())}'
+              )
+          print(f'Schema check PASSED — all required columns present: {REQUIRED_COLUMNS}')
+          "
+
       - name: Run minimal live analysis (smoke test)
         env:
           FLS_LIVE_TESTS: "1"
@@ -43,11 +79,19 @@ jobs:
           raw = load_from_api(year=2023, state='IL', limit=5000)
           print(f'Loaded {len(raw)} records')
 
-          assert len(raw) > 100, f'Expected >100 records, got {len(raw)} — API may have changed shape'
-
-          with warnings.catch_warnings():
-              warnings.simplefilter('ignore')
-              prepared = prepare_for_analysis(raw, validate_controls=False)
+          # validate_controls=True so missing controls surface as warnings (not silently dropped)
+          with warnings.catch_warnings(record=True) as caught:
+              warnings.simplefilter('always')
+              prepared = prepare_for_analysis(raw, validate_controls=True)
+              control_warnings = [str(w.message) for w in caught if 'control' in str(w.message).lower()]
+              if control_warnings:
+                  print('WARNING: control columns missing from API response:')
+                  for w in control_warnings:
+                      print(f'  {w}')
+                  raise AssertionError(
+                      'Missing FFIEC-standard controls — API schema may have changed. '
+                      'See warnings above.'
+                  )
 
           n_black = (prepared['derived_race'] == 'Black or African American').sum()
           n_white = (prepared['derived_race'] == 'White').sum()
@@ -59,6 +103,7 @@ jobs:
                   protected_class='Black or African American',
                   comparison_class='White',
                   min_sample_size=50,
+                  data_year=2023,
               )
               print(f'Adjusted OR: {result.adjusted_odds_ratio:.3f}')
               print(f'p-value: {result.p_value:.4f}')
@@ -68,11 +113,12 @@ jobs:
               print('Data health check PASSED')
           else:
               print(f'Skipping regression: insufficient group sizes (Black={n_black}, White={n_white})')
-              print('Data health check PASSED (API reachable, data shape valid)')
+              print('Data health check PASSED (API reachable, schema valid)')
           "
 
       - name: Notify on failure
         if: failure()
         run: |
-          echo "::error::Data source health check failed. CFPB API may have moved or changed shape."
-          echo "::error::Check https://ffiec.cfpb.gov/api/public/ and update data.py if the endpoint changed."
+          echo "::error::Data source health check failed. Check the step that failed above."
+          echo "::error::If schema validation failed: CFPB may have renamed columns — update data.py."
+          echo "::error::If endpoint health failed: check https://ffiec.cfpb.gov/api/public/"

@@ -35,7 +35,7 @@ def test_insufficient_data_raises(base_df):
     """Sample below min_sample_size raises InsufficientDataError, not a result."""
     tiny = base_df[base_df["derived_race"].isin(["Black or African American", "White"])].head(50)
     with pytest.raises(InsufficientDataError) as exc_info:
-        adjusted_denial_disparity(tiny, min_sample_size=100)
+        adjusted_denial_disparity(tiny, min_sample_size=100, data_year=2023)
     err = exc_info.value
     assert err.actual < 100
     assert err.minimum == 100
@@ -58,7 +58,7 @@ def test_insufficient_data_error_fields():
 def test_protected_class_not_in_data(base_df):
     """Requesting a race not present raises InvalidProtectedClassError with valid values listed."""
     with pytest.raises(InvalidProtectedClassError) as exc_info:
-        adjusted_denial_disparity(base_df, protected_class="Martian")
+        adjusted_denial_disparity(base_df, protected_class="Martian", data_year=2023)
     err = exc_info.value
     assert err.requested == "Martian"
     assert "White" in err.valid_values
@@ -68,7 +68,7 @@ def test_protected_class_not_in_data(base_df):
 def test_comparison_class_not_in_data(base_df):
     """Requesting a comparison class not present raises InvalidProtectedClassError."""
     with pytest.raises(InvalidProtectedClassError) as exc_info:
-        adjusted_denial_disparity(base_df, comparison_class="Martian")
+        adjusted_denial_disparity(base_df, comparison_class="Martian", data_year=2023)
     err = exc_info.value
     assert err.requested == "Martian"
 
@@ -84,14 +84,14 @@ def test_missing_required_column():
         "log_income": [4.0, 3.5, 4.2, 3.8],
     })
     with pytest.raises(MissingControlsError) as exc_info:
-        adjusted_denial_disparity(df)
+        adjusted_denial_disparity(df, data_year=2023)
     assert "derived_race" in exc_info.value.missing_columns
 
 
 def test_explicitly_requested_control_missing(base_df):
     """Explicitly requesting a missing control column raises MissingControlsError."""
     with pytest.raises(MissingControlsError) as exc_info:
-        adjusted_denial_disparity(base_df, controls=["nonexistent_column"])
+        adjusted_denial_disparity(base_df, controls=["nonexistent_column"], min_sample_size=100, data_year=2023)
     assert "nonexistent_column" in exc_info.value.missing_columns
     assert "nonexistent_column" in str(exc_info.value)
 
@@ -149,8 +149,24 @@ def test_all_denials_one_group_raises():
     prepared = prepare_for_analysis(df, validate_controls=False)
 
     with pytest.raises(ModelConvergenceError) as exc_info:
-        adjusted_denial_disparity(prepared, controls=[])
+        adjusted_denial_disparity(prepared, controls=[], min_sample_size=100, data_year=2023)
     assert "separation" in str(exc_info.value).lower() or "all" in str(exc_info.value).lower()
+
+
+# ── Regression test: CRIT-2 controls_used overwrite ───────────────────────────
+
+def test_controls_used_excludes_dropped_controls(base_df):
+    """Controls dropped for zero variance must NOT appear in controls_used (CRIT-2 fix)."""
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        result = adjusted_denial_disparity(base_df, min_sample_size=100, data_year=2023)
+
+    for dropped in result.dropped_controls:
+        assert dropped not in result.controls_used, (
+            f"'{dropped}' was in dropped_controls but also in controls_used — "
+            f"the report would falsely claim this variable was used in the model."
+        )
 
 
 # ── Empty DataFrame after filters ─────────────────────────────────────────────
@@ -171,7 +187,7 @@ def test_empty_after_filters_raises():
 def test_msa_filter_nonexistent(base_df):
     """Filtering to a nonexistent MSA raises InsufficientDataError."""
     with pytest.raises(InsufficientDataError):
-        adjusted_denial_disparity(base_df, msa="NONEXISTENT_MSA_9999")
+        adjusted_denial_disparity(base_df, msa="NONEXISTENT_MSA_9999", data_year=2023)
 
 
 # ── DataSourceError ───────────────────────────────────────────────────────────

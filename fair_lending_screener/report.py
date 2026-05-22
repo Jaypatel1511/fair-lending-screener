@@ -18,6 +18,7 @@ from .methodology import (
     FFIEC_URL,
     MARKUP_METHODOLOGY_CITATION,
     STANDARD_DISCLAIMER,
+    STANDARD_DISCLAIMER_NON_SIGNIFICANT,
     ALPHA_DISCLAIMER,
     WOOLDRIDGE_OVB_CITATION,
 )
@@ -118,7 +119,8 @@ def generate_disparity_report(
         )
     lines.append(headline)
     lines.append("")
-    lines.append(f"> {STANDARD_DISCLAIMER}")
+    _disclaimer = STANDARD_DISCLAIMER if result.is_statistically_significant else STANDARD_DISCLAIMER_NON_SIGNIFICANT
+    lines.append(f"> {_disclaimer}")
     lines.append("")
 
     # ── Key numbers ───────────────────────────────────────────────────────────
@@ -223,7 +225,7 @@ def generate_disparity_report(
         "with full loan-file data, internal underwriting guidelines, and examiner access."
     )
     lines.append("")
-    lines.append(f"> {STANDARD_DISCLAIMER}")
+    lines.append(f"> {_disclaimer}")
     lines.append("")
 
     # ── Methodology section ───────────────────────────────────────────────────

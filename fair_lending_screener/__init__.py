@@ -11,10 +11,14 @@ Does NOT constitute a finding of discrimination — only a finding of
 statistically significant adjusted disparity warranting further review.
 
 v0.1.0: Adjusted denial disparity analysis (logistic regression with controls).
+v0.1.1: Bug fixes — disclaimer, controls_used, min_sample_size, provenance year,
+         business_or_commercial_purpose filter, bundled docs.
 v0.2.0+: BISG proxy, pricing disparity, redlining geographic tests, peer benchmarking.
 """
 
-__version__ = "0.1.0"
+import os
+
+__version__ = "0.1.1"
 __author__ = "Jay Patel"
 __license__ = "MIT"
 
@@ -40,6 +44,17 @@ from .exceptions import (
     InsufficientGroupSizeError,
 )
 
+
+def get_methodology_path() -> str:
+    """Return the filesystem path to the bundled methodology documentation."""
+    return os.path.join(os.path.dirname(__file__), "_methodology_doc.md")
+
+
+def get_limitations_path() -> str:
+    """Return the filesystem path to the bundled HMDA data limitations documentation."""
+    return os.path.join(os.path.dirname(__file__), "_limitations_doc.md")
+
+
 __all__ = [
     "__version__",
     # Data loading
@@ -53,6 +68,9 @@ __all__ = [
     "DisparityResult",
     # Report generation
     "generate_disparity_report",
+    # Bundled docs
+    "get_methodology_path",
+    "get_limitations_path",
     # Exceptions
     "FairLendingScreenerError",
     "InsufficientDataError",
