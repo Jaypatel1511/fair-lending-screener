@@ -181,6 +181,17 @@ def generate_disparity_report(
         )
         lines.append("")
 
+    if result.dropped_controls:
+        lines.append(
+            f"**Controls dropped (zero variance in this sample):** "
+            f"{', '.join(f'`{c}`' for c in result.dropped_controls)}. "
+            f"These columns were constant in the analysis sample — they contribute "
+            f"nothing to model fit and would cause a singular Hessian. "
+            f"Common cause: `dti_missing` when all applicants reported DTI, or "
+            f"an MSA dummy covering a single outcome category."
+        )
+        lines.append("")
+
     # ── Limitations ───────────────────────────────────────────────────────────
     lines.append("## Limitations of This Analysis")
     lines.append("")

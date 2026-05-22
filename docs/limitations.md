@@ -1,5 +1,7 @@
 # Public HMDA Data Limitations
 
+**Scope:** This tool analyzes HMDA-reportable mortgage transactions only. See [`methodology.md`](methodology.md) for full scope and [`README.md`](../README.md) for excluded products (e.g., Section 1071 small business lending).
+
 **This document is required reading before drawing conclusions from fair-lending-screener output.**
 
 Public HMDA data is the foundation of this tool, and it is incomplete. The following information is absent from the public dataset and therefore absent from every analysis this tool produces. Each omission is a source of omitted-variable bias that may cause the adjusted odds ratio to be overstated or understated relative to a fully specified model.

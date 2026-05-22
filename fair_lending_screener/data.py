@@ -146,6 +146,18 @@ def load_sample(n: int = 2000, seed: int = 42) -> pd.DataFrame:
     The sample includes all columns required for the full FFIEC control set,
     unlike hmdaanalyzer's load_sample() which omits LTV, DTI, and property_value.
 
+    Note on pseudo-R² with synthetic data: MSA assignments are random, so MSA
+    dummy variables carry no real geographic signal. This produces pseudo-R²
+    values of 0.03–0.06 — far below the 0.15–0.25 expected on real HMDA data.
+    This is expected; it reflects the absence of genuine geographic variation,
+    not a problem with the model. See docs/methodology.md § "Pseudo-R²" for detail.
+
+    Note on adjusted vs. unadjusted OR: On real HMDA, adjusted OR < unadjusted OR
+    because income/LTV/DTI partially explain the raw disparity. On this synthetic
+    sample, the generator makes race the primary driver, so controlling for mild
+    income correlation can produce adjusted OR slightly above unadjusted OR.
+    This is expected behavior on synthetic data.
+
     Args:
         n:    Number of records (default 2000; use ≥1000 for meaningful regression)
         seed: Random seed for reproducibility

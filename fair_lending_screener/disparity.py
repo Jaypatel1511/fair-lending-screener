@@ -93,7 +93,8 @@ class DisparityResult:
 
     # ── Model metadata ────────────────────────────────────────────────────────
     controls_used: list[str]
-    model_diagnostics: dict   # pseudo_r2, log_likelihood, converged, n_iterations, n_msa_dummies
+    dropped_controls: list[str]   # controls excluded by zero-variance check (see disparity.py)
+    model_diagnostics: dict       # pseudo_r2, log_likelihood, converged, n_iterations, n_msa_dummies
     methodology_citation: str
     limitations: list[str]
 
@@ -247,11 +248,20 @@ def adjusted_denial_disparity(
     # Drop zero-variance columns (e.g., dti_missing when DTI is complete, MSA dummies
     # that cover only one group, or filter-constant columns like lien_status_dummy).
     # A zero-variance column contributes nothing and causes a singular Hessian.
-    zero_var = [c for c in X.columns if X[c].nunique() <= 1]
+    zero_var = [c for c in X.columns if c != "protected_class_ind" and X[c].nunique() <= 1]
     if zero_var:
+        warnings.warn(
+            f"Dropping {len(zero_var)} zero-variance control(s) before fitting — "
+            f"they are constant in this sample and would cause a singular Hessian: {zero_var}. "
+            f"Common cause: 'dti_missing' when no DTI values are missing, or an MSA dummy "
+            f"covering only one outcome category. Results use the remaining controls.",
+            UserWarning,
+            stacklevel=2,
+        )
         X = X.drop(columns=zero_var)
 
     # Rebuild controls_used to reflect what survived after zero-variance drop
+    dropped_controls = zero_var
     controls_used = [c for c in X.columns if c != "protected_class_ind"]
 
     X_with_const = sm.add_constant(X, has_constant="add")
@@ -317,6 +327,7 @@ def adjusted_denial_disparity(
         sample_size_protected=n_protected,
         sample_size_comparison=n_comparison,
         controls_used=controls_used,
+        dropped_controls=dropped_controls,
         model_diagnostics=diagnostics,
         methodology_citation=_METHODOLOGY_CITATION,
         limitations=STANDARD_LIMITATIONS.copy(),

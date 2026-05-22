@@ -246,6 +246,12 @@ McFadden's pseudo-R² is:
 
 **The Markup's national model achieved pseudo-R² = 0.2256**, which is in the excellent range. Analysts should note that our default control set (which excludes AUS and credit model) will produce a lower pseudo-R².
 
+**Expected pseudo-R² on real HMDA data:** Approximately 0.15–0.25 for national or large-state conventional home purchase models with MSA fixed effects and the standard control set. Models below 0.10 warrant inspection of the control set and sample filters.
+
+**Why synthetic sample data produces low pseudo-R²:** The `load_sample()` function generates records with random MSA assignments. Because these MSAs carry no real geographic signal — all lenders in the data are equally likely to serve all MSAs — the MSA dummy variables contribute nothing to model fit. Real HMDA data has genuine geographic variation in denial rates (correlated with local market conditions, lender mix, and economic environment) that MSA fixed effects capture. On real data, pseudo-R² is typically 5–10× higher than on the synthetic sample. A pseudo-R² of 0.03–0.05 on synthetic data does not indicate a model problem; it reflects the absence of real geographic signal in random-MSA synthetic data.
+
+**Adjusted OR > unadjusted OR on synthetic data:** On real HMDA data, the adjusted odds ratio is typically lower than the unadjusted odds ratio, because income, LTV, and DTI differences between racial groups partially explain the raw denial rate disparity — controlling for them reduces the unexplained portion. On the synthetic sample, the generator makes race the primary driver of denial with mild income correlation. In this case, controlling for income slightly amplifies the racial coefficient (the controls remove a suppressor effect rather than a confound), producing adjusted OR > unadjusted OR. This is expected behavior on synthetic data, not a bug in the model. On real HMDA data the typical direction is adjusted < unadjusted.
+
 This package reports pseudo-R² as a diagnostic and flags models below 0.05 as potentially underspecified.
 
 ---

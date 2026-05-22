@@ -103,6 +103,7 @@ def _make_nonsig_result():
         sample_size_protected=120,
         sample_size_comparison=380,
         controls_used=["log_income", "loan_to_value_ratio"],
+        dropped_controls=[],
         model_diagnostics={
             "pseudo_r2_mcfadden": 0.15,
             "log_likelihood": -280.0,

@@ -85,6 +85,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - MSA dummies differ from The Markup's categorical tract proxies — results not directly comparable
 - Synthetic sample data (load_sample) not suitable for production analysis
 
+### Known Issues
+
+- Example notebook (`examples/disparity_demo.ipynb`) is included in the source distribution but not in the binary wheel due to `pyproject.toml` `package-data` scoping — `package-data` only applies to files inside Python package directories, and `examples/` has no `__init__.py`. To run the notebook, clone the GitHub repository. This will be fixed in v0.2.0.
+
 ---
 
 [0.1.0]: https://github.com/Jaypatel1511/fair-lending-screener/releases/tag/v0.1.0
