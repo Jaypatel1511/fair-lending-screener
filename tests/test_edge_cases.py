@@ -13,10 +13,14 @@ import pytest
 from fair_lending_screener import (
     adjusted_denial_disparity,
     InsufficientDataError,
+    InvalidDataYearError,
     InvalidProtectedClassError,
     MissingControlsError,
+    MethodologyDocNotFoundError,
     ModelConvergenceError,
     InsufficientGroupSizeError,
+    get_methodology_path,
+    get_limitations_path,
     load_sample,
     prepare_for_analysis,
 )
@@ -35,7 +39,7 @@ def test_insufficient_data_raises(base_df):
     """Sample below min_sample_size raises InsufficientDataError, not a result."""
     tiny = base_df[base_df["derived_race"].isin(["Black or African American", "White"])].head(50)
     with pytest.raises(InsufficientDataError) as exc_info:
-        adjusted_denial_disparity(tiny, min_sample_size=100)
+        adjusted_denial_disparity(tiny, min_sample_size=100, data_year=2023)
     err = exc_info.value
     assert err.actual < 100
     assert err.minimum == 100
@@ -58,7 +62,7 @@ def test_insufficient_data_error_fields():
 def test_protected_class_not_in_data(base_df):
     """Requesting a race not present raises InvalidProtectedClassError with valid values listed."""
     with pytest.raises(InvalidProtectedClassError) as exc_info:
-        adjusted_denial_disparity(base_df, protected_class="Martian")
+        adjusted_denial_disparity(base_df, protected_class="Martian", data_year=2023)
     err = exc_info.value
     assert err.requested == "Martian"
     assert "White" in err.valid_values
@@ -68,7 +72,7 @@ def test_protected_class_not_in_data(base_df):
 def test_comparison_class_not_in_data(base_df):
     """Requesting a comparison class not present raises InvalidProtectedClassError."""
     with pytest.raises(InvalidProtectedClassError) as exc_info:
-        adjusted_denial_disparity(base_df, comparison_class="Martian")
+        adjusted_denial_disparity(base_df, comparison_class="Martian", data_year=2023)
     err = exc_info.value
     assert err.requested == "Martian"
 
@@ -84,14 +88,16 @@ def test_missing_required_column():
         "log_income": [4.0, 3.5, 4.2, 3.8],
     })
     with pytest.raises(MissingControlsError) as exc_info:
-        adjusted_denial_disparity(df)
+        adjusted_denial_disparity(df, data_year=2023)
     assert "derived_race" in exc_info.value.missing_columns
 
 
 def test_explicitly_requested_control_missing(base_df):
     """Explicitly requesting a missing control column raises MissingControlsError."""
     with pytest.raises(MissingControlsError) as exc_info:
-        adjusted_denial_disparity(base_df, controls=["nonexistent_column"])
+        adjusted_denial_disparity(
+            base_df, controls=["nonexistent_column"], min_sample_size=100, data_year=2023
+        )
     assert "nonexistent_column" in exc_info.value.missing_columns
     assert "nonexistent_column" in str(exc_info.value)
 
@@ -149,7 +155,7 @@ def test_all_denials_one_group_raises():
     prepared = prepare_for_analysis(df, validate_controls=False)
 
     with pytest.raises(ModelConvergenceError) as exc_info:
-        adjusted_denial_disparity(prepared, controls=[])
+        adjusted_denial_disparity(prepared, controls=[], min_sample_size=100, data_year=2023)
     assert "separation" in str(exc_info.value).lower() or "all" in str(exc_info.value).lower()
 
 
@@ -171,7 +177,38 @@ def test_empty_after_filters_raises():
 def test_msa_filter_nonexistent(base_df):
     """Filtering to a nonexistent MSA raises InsufficientDataError."""
     with pytest.raises(InsufficientDataError):
-        adjusted_denial_disparity(base_df, msa="NONEXISTENT_MSA_9999")
+        adjusted_denial_disparity(base_df, msa="NONEXISTENT_MSA_9999", data_year=2023)
+
+
+# ── InvalidDataYearError ──────────────────────────────────────────────────────
+
+def test_invalid_data_year_string(base_df):
+    """String data_year raises InvalidDataYearError."""
+    with pytest.raises(InvalidDataYearError) as exc_info:
+        adjusted_denial_disparity(base_df, data_year="2023")
+    assert exc_info.value.data_year == "2023"
+
+
+def test_invalid_data_year_pre2018(base_df):
+    """data_year before 2018 raises InvalidDataYearError."""
+    with pytest.raises(InvalidDataYearError) as exc_info:
+        adjusted_denial_disparity(base_df, data_year=2017)
+    assert exc_info.value.data_year == 2017
+    assert "2018" in str(exc_info.value)
+
+
+def test_invalid_data_year_future(base_df):
+    """data_year beyond current calendar year raises InvalidDataYearError."""
+    from datetime import datetime, timezone
+    future_year = datetime.now(timezone.utc).year + 1
+    with pytest.raises(InvalidDataYearError):
+        adjusted_denial_disparity(base_df, data_year=future_year)
+
+
+def test_invalid_data_year_float(base_df):
+    """Float data_year raises InvalidDataYearError even if value is in range."""
+    with pytest.raises(InvalidDataYearError):
+        adjusted_denial_disparity(base_df, data_year=2023.0)
 
 
 # ── DataSourceError ───────────────────────────────────────────────────────────
@@ -182,3 +219,87 @@ def test_data_source_error_fields():
     err = DataSourceError(url="https://example.com", reason="Connection refused")
     assert err.url == "https://example.com"
     assert "Connection refused" in str(err)
+
+
+# ── get_methodology_path / get_limitations_path ───────────────────────────────
+
+def test_get_methodology_path_returns_existing_file():
+    """Happy path: installed wheel bundles _methodology_doc.md; path must exist and be readable."""
+    path = get_methodology_path()
+    assert path.exists(), f"Methodology doc not found at {path}"
+    assert path.suffix == ".md"
+    content = path.read_text(encoding="utf-8")
+    assert len(content) > 100, "Methodology doc appears to be empty or truncated"
+
+
+def test_get_methodology_path_raises_when_missing():
+    """MethodologyDocNotFoundError raised and carries correct path when bundled file is absent."""
+    from unittest.mock import MagicMock, patch
+
+    mock_pkg = MagicMock()
+    mock_pkg.__truediv__.return_value.is_file.return_value = False
+
+    with patch("fair_lending_screener._docs.importlib.resources.files", return_value=mock_pkg):
+        with pytest.raises(MethodologyDocNotFoundError) as exc_info:
+            get_methodology_path()
+    err = exc_info.value
+    assert err.path == "fair_lending_screener/_methodology_doc.md"
+    assert "methodology" in str(err).lower()
+
+
+def test_get_limitations_path_returns_existing_file():
+    """Happy path: installed wheel bundles _limitations_doc.md; path must exist and be readable."""
+    path = get_limitations_path()
+    assert path.exists(), f"Limitations doc not found at {path}"
+    assert path.suffix == ".md"
+    content = path.read_text(encoding="utf-8")
+    assert len(content) > 100, "Limitations doc appears to be empty or truncated"
+
+
+def test_get_limitations_path_raises_when_missing():
+    """MethodologyDocNotFoundError raised and carries correct path when bundled file is absent."""
+    from unittest.mock import MagicMock, patch
+
+    mock_pkg = MagicMock()
+    mock_pkg.__truediv__.return_value.is_file.return_value = False
+
+    with patch("fair_lending_screener._docs.importlib.resources.files", return_value=mock_pkg):
+        with pytest.raises(MethodologyDocNotFoundError) as exc_info:
+            get_limitations_path()
+    err = exc_info.value
+    assert err.path == "fair_lending_screener/_limitations_doc.md"
+    assert "limitations" in str(err).lower()
+
+
+# ── numpy integer and bool data_year validation ───────────────────────────────
+
+def test_data_year_numpy_int64_accepted(base_df):
+    """np.int64 data_year must be accepted — common pandas/numpy output type."""
+    result = adjusted_denial_disparity(base_df, min_sample_size=100, data_year=np.int64(2023))
+    assert result.adjusted_odds_ratio > 0
+
+
+def test_data_year_numpy_int32_accepted(base_df):
+    """np.int32 data_year must be accepted."""
+    result = adjusted_denial_disparity(base_df, min_sample_size=100, data_year=np.int32(2023))
+    assert result.adjusted_odds_ratio > 0
+
+
+def test_data_year_python_int_accepted(base_df):
+    """Plain Python int data_year regression check — must still be accepted after validation fix."""
+    result = adjusted_denial_disparity(base_df, min_sample_size=100, data_year=2023)
+    assert result.adjusted_odds_ratio > 0
+
+
+def test_data_year_bool_true_rejected(base_df):
+    """data_year=True raises InvalidDataYearError — bool is int subclass and must be rejected first."""
+    with pytest.raises(InvalidDataYearError) as exc_info:
+        adjusted_denial_disparity(base_df, min_sample_size=100, data_year=True)
+    assert exc_info.value.data_year is True
+
+
+def test_data_year_bool_false_rejected(base_df):
+    """data_year=False raises InvalidDataYearError."""
+    with pytest.raises(InvalidDataYearError) as exc_info:
+        adjusted_denial_disparity(base_df, min_sample_size=100, data_year=False)
+    assert exc_info.value.data_year is False

@@ -18,7 +18,7 @@ def result():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         prepared = prepare_for_analysis(raw, validate_controls=False)
-        return adjusted_denial_disparity(prepared, min_sample_size=100)
+        return adjusted_denial_disparity(prepared, min_sample_size=100, data_year=2023)
 
 
 def test_report_is_string(result):
@@ -71,17 +71,44 @@ def test_report_contains_ffiec_citation(result):
     assert "FFIEC" in report
 
 
-def test_report_with_lender_name_significant(result):
-    """When result passes all guardrails, lender name appears in the report."""
-    pseudo_r2 = result.model_diagnostics.get("pseudo_r2_mcfadden", 0)
-    if not result.is_statistically_significant:
-        pytest.skip("Result not significant — guardrail suppresses lender name")
-    if pseudo_r2 < 0.05:
-        pytest.skip(
-            f"Synthetic data pseudo-R²={pseudo_r2:.3f} < 0.05 — guardrail suppresses "
-            "lender name (this is correct behavior; synthetic data has low model fit)"
-        )
-    report = generate_disparity_report(result, lender_name="First National Bank")
+def test_report_with_lender_name_significant():
+    """Mock-based: when all guardrails pass, lender name appears in the report."""
+    from fair_lending_screener.disparity import DisparityResult
+    from fair_lending_screener.methodology import STANDARD_LIMITATIONS, FFIEC_FAIR_LENDING_PROCEDURES
+
+    sig_result = DisparityResult(
+        protected_class="Black or African American",
+        comparison_class="White",
+        unadjusted_odds_ratio=1.85,
+        adjusted_odds_ratio=1.76,
+        confidence_interval_95=(1.42, 2.18),
+        p_value=0.0001,
+        sample_size=1200,
+        sample_size_protected=280,
+        sample_size_comparison=920,
+        controls_used=["log_income", "log_loan_amount", "loan_to_value_ratio", "log_property_value"],
+        dropped_controls=[],
+        model_diagnostics={
+            "pseudo_r2_mcfadden": 0.18,
+            "log_likelihood": -680.0,
+            "converged": True,
+            "n_msa_dummies": 8,
+            "n_obs_in_model": 1200,
+            "pseudo_r2_flag": "OK",
+        },
+        methodology_citation=FFIEC_FAIR_LENDING_PROCEDURES,
+        limitations=STANDARD_LIMITATIONS.copy(),
+        is_statistically_significant=True,
+        interpretation="Statistically significant disparity found.",
+        provenance={
+            "package_version": "0.2.0",
+            "dependency_versions": {},
+            "data_source_url": "test",
+            "timestamp": "2026-05-22T00:00:00Z",
+            "input_parameters": {"data_year": 2023},
+        },
+    )
+    report = generate_disparity_report(sig_result, lender_name="First National Bank")
     assert "First National Bank" in report
 
 
@@ -90,7 +117,13 @@ def test_report_with_lender_name_significant(result):
 def _make_nonsig_result():
     """Build a result with a high p-value to trigger the guardrail."""
     from fair_lending_screener.disparity import DisparityResult
-    from fair_lending_screener.methodology import STANDARD_LIMITATIONS, FFIEC_FAIR_LENDING_PROCEDURES
+    from fair_lending_screener.methodology import (
+        STANDARD_LIMITATIONS,
+        STANDARD_DISCLAIMER_NON_SIGNIFICANT,
+        FFIEC_FAIR_LENDING_PROCEDURES,
+    )
+
+    limitations = STANDARD_LIMITATIONS[:-1] + [STANDARD_DISCLAIMER_NON_SIGNIFICANT]
 
     return DisparityResult(
         protected_class="Black or African American",
@@ -113,15 +146,15 @@ def _make_nonsig_result():
             "pseudo_r2_flag": "OK",
         },
         methodology_citation=FFIEC_FAIR_LENDING_PROCEDURES,
-        limitations=STANDARD_LIMITATIONS.copy(),
+        limitations=limitations,
         is_statistically_significant=False,
         interpretation="No significant disparity found.",
         provenance={
-            "package_version": "0.1.0",
+            "package_version": "0.2.0",
             "dependency_versions": {},
             "data_source_url": "test",
-            "timestamp": "2026-05-21T00:00:00Z",
-            "input_parameters": {},
+            "timestamp": "2026-05-22T00:00:00Z",
+            "input_parameters": {"data_year": 2023},
         },
     )
 

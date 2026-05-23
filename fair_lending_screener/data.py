@@ -317,6 +317,26 @@ def prepare_for_analysis(
     if "loan_to_value_ratio" in df.columns:
         df = df[df["loan_to_value_ratio"].notna() & (df["loan_to_value_ratio"] <= _MAX_LTV)]
 
+    # Filter 9: exclude business/commercial purpose (The Markup spec, Filter 9)
+    # HMDA code 1 = primarily for business/commercial purpose; code 2 = not for business/commercial.
+    # Exempt reporters use code 1111; NaN results from coercion of Exempt or missing values.
+    # Policy: only include rows explicitly coded 2 (not for business). NaN and Exempt (1111)
+    # are excluded to err on the side of analyzing only clearly consumer-purpose loans.
+    if "business_or_commercial_purpose" in df.columns:
+        df["business_or_commercial_purpose"] = pd.to_numeric(
+            df["business_or_commercial_purpose"], errors="coerce"
+        )
+        df = df[df["business_or_commercial_purpose"] == 2]
+    elif validate_controls:
+        warnings.warn(
+            "'business_or_commercial_purpose' column not found in DataFrame. "
+            "Filter 9 (exclude business-purpose loans per The Markup spec) could not be applied. "
+            "Results may include business-purpose loans. "
+            "Use real HMDA data (2018+) from load_from_api() for the full filter set.",
+            UserWarning,
+            stacklevel=2,
+        )
+
     if df.empty:
         raise ValueError(
             "DataFrame is empty after applying FFIEC dataset filters. "

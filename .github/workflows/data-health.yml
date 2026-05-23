@@ -8,14 +8,17 @@ on:
 jobs:
   data-health:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install package
         run: |
@@ -36,8 +39,9 @@ jobs:
           FLS_LIVE_TESTS: "1"
         run: |
           python -c "
-          import warnings
+          import sys
           from fair_lending_screener import load_from_api, prepare_for_analysis, adjusted_denial_disparity
+          from fair_lending_screener.data import STANDARD_CONTROLS
 
           print('Fetching 2023 HMDA data (sample)...')
           raw = load_from_api(year=2023, state='IL', limit=5000)
@@ -45,9 +49,13 @@ jobs:
 
           assert len(raw) > 100, f'Expected >100 records, got {len(raw)} — API may have changed shape'
 
-          with warnings.catch_warnings():
-              warnings.simplefilter('ignore')
-              prepared = prepare_for_analysis(raw, validate_controls=False)
+          prepared = prepare_for_analysis(raw, validate_controls=True)
+
+          missing_controls = [c for c in STANDARD_CONTROLS if c not in prepared.columns]
+          if missing_controls:
+              print(f'ERROR: Missing FFIEC-standard controls: {missing_controls}')
+              print('This suggests the CFPB API data shape has changed. Review data.py.')
+              sys.exit(1)
 
           n_black = (prepared['derived_race'] == 'Black or African American').sum()
           n_white = (prepared['derived_race'] == 'White').sum()
@@ -59,6 +67,7 @@ jobs:
                   protected_class='Black or African American',
                   comparison_class='White',
                   min_sample_size=50,
+                  data_year=2023,
               )
               print(f'Adjusted OR: {result.adjusted_odds_ratio:.3f}')
               print(f'p-value: {result.p_value:.4f}')

@@ -18,6 +18,7 @@ from .methodology import (
     FFIEC_URL,
     MARKUP_METHODOLOGY_CITATION,
     STANDARD_DISCLAIMER,
+    STANDARD_DISCLAIMER_NON_SIGNIFICANT,
     ALPHA_DISCLAIMER,
     WOOLDRIDGE_OVB_CITATION,
 )
@@ -38,8 +39,6 @@ def generate_disparity_report(
 
     Safety guardrails (see A7): lender_name is suppressed from the headline
     and interpretation sections when any of the following are true:
-    - sample_size < 100 (unreliable — should have been caught by InsufficientDataError,
-      but checked here as a belt-and-suspenders measure)
     - p_value > 0.05 (not statistically significant)
     - model failed convergence (detected via model_diagnostics)
     - pseudo-R² < 0.05 (model controls contribute essentially nothing)
@@ -57,6 +56,11 @@ def generate_disparity_report(
     """
     guardrail_flags = _check_guardrails(result)
     safe_to_name_lender = len(guardrail_flags) == 0
+
+    _disclaimer = (
+        STANDARD_DISCLAIMER if result.is_statistically_significant
+        else STANDARD_DISCLAIMER_NON_SIGNIFICANT
+    )
 
     lines: list[str] = []
 
@@ -118,7 +122,7 @@ def generate_disparity_report(
         )
     lines.append(headline)
     lines.append("")
-    lines.append(f"> {STANDARD_DISCLAIMER}")
+    lines.append(f"> {_disclaimer}")
     lines.append("")
 
     # ── Key numbers ───────────────────────────────────────────────────────────
@@ -202,7 +206,7 @@ def generate_disparity_report(
     )
     lines.append("")
     for lim in result.limitations:
-        if lim != STANDARD_DISCLAIMER:
+        if lim not in (STANDARD_DISCLAIMER, STANDARD_DISCLAIMER_NON_SIGNIFICANT):
             lines.append(f"- {lim}")
     lines.append("")
 
@@ -223,7 +227,7 @@ def generate_disparity_report(
         "with full loan-file data, internal underwriting guidelines, and examiner access."
     )
     lines.append("")
-    lines.append(f"> {STANDARD_DISCLAIMER}")
+    lines.append(f"> {_disclaimer}")
     lines.append("")
 
     # ── Methodology section ───────────────────────────────────────────────────
@@ -286,12 +290,6 @@ def _check_guardrails(result: DisparityResult) -> list[str]:
     Lender name is suppressed from headlines when any flag is raised.
     """
     flags = []
-
-    if result.sample_size < 100:
-        flags.append(
-            f"Sample size ({result.sample_size:,}) is below the 100-observation minimum. "
-            "Results are statistically unreliable."
-        )
 
     if result.p_value > 0.05:
         flags.append(

@@ -89,3 +89,29 @@ class InsufficientGroupSizeError(FairLendingScreenerError):
             f"Group {group!r} has only {count} observations (minimum per group: {minimum}). "
             f"Results would be unreliable. Filter to a larger geography or time period."
         )
+
+
+class InvalidDataYearError(FairLendingScreenerError):
+    """Raised when data_year fails validation in adjusted_denial_disparity()."""
+
+    def __init__(self, data_year, current_year: int):
+        self.data_year = data_year
+        self.current_year = current_year
+        super().__init__(
+            f"Invalid data_year={data_year!r}: must be an integer in the range [2018, {current_year}]. "
+            f"Years before 2018 lack loan_to_value_ratio, debt_to_income_ratio, and property_value — "
+            f"controls required for the FFIEC-standard disparity model. "
+            f"Future years (> {current_year}) are not yet available from the CFPB HMDA Data Browser."
+        )
+
+
+class MethodologyDocNotFoundError(FairLendingScreenerError):
+    """Raised by get_methodology_path() / get_limitations_path() when the bundled file is absent."""
+
+    def __init__(self, path: str):
+        self.path = path
+        super().__init__(
+            f"Bundled methodology document not found at {path!r}. "
+            f"This file is included in the installed wheel but appears to be absent from this environment. "
+            f"Run 'pip install --force-reinstall fair-lending-screener' to restore it."
+        )

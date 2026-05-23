@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fair-lending-screener"
-version = "0.1.0"
+version = "0.2.0"
 description = "Statistical disparate impact analysis for HMDA data — the methodology federal examiners use, open-sourced for community advocates"
 readme = "README.md"
 license = "MIT"
@@ -72,7 +72,7 @@ include = ["fair_lending_screener*", "fairlendingscreener*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short --import-mode=importlib"
 markers = [
     "live: marks tests that require live CFPB API access (deselect with -m 'not live')",
     "slow: marks tests that take more than 10 seconds",

@@ -11,10 +11,11 @@ Does NOT constitute a finding of discrimination — only a finding of
 statistically significant adjusted disparity warranting further review.
 
 v0.1.0: Adjusted denial disparity analysis (logistic regression with controls).
-v0.2.0+: BISG proxy, pricing disparity, redlining geographic tests, peer benchmarking.
+v0.2.0: Input validation, type-coercion fixes, release-process rebuild.
+v0.3.0+: BISG proxy, pricing disparity, redlining geographic tests, peer benchmarking.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Jay Patel"
 __license__ = "MIT"
 
@@ -38,7 +39,10 @@ from .exceptions import (
     MissingControlsError,
     DataSourceError,
     InsufficientGroupSizeError,
+    InvalidDataYearError,
+    MethodologyDocNotFoundError,
 )
+from ._docs import get_methodology_path, get_limitations_path
 
 __all__ = [
     "__version__",
@@ -53,6 +57,9 @@ __all__ = [
     "DisparityResult",
     # Report generation
     "generate_disparity_report",
+    # Documentation paths
+    "get_methodology_path",
+    "get_limitations_path",
     # Exceptions
     "FairLendingScreenerError",
     "InsufficientDataError",
@@ -61,4 +68,6 @@ __all__ = [
     "MissingControlsError",
     "DataSourceError",
     "InsufficientGroupSizeError",
+    "InvalidDataYearError",
+    "MethodologyDocNotFoundError",
 ]

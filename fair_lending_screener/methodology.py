@@ -111,8 +111,16 @@ STANDARD_DISCLAIMER = (
     "would be required to assess whether discrimination occurred."
 )
 
+STANDARD_DISCLAIMER_NON_SIGNIFICANT = (
+    "This analysis did NOT identify a statistically significant adjusted disparity at the "
+    "conventional p<0.05 threshold. Absence of statistical significance does not prove the "
+    "absence of disparity — it may reflect sample size, model specification, or genuinely "
+    "small disparities. This tool is a screening signal and does not constitute a finding "
+    "of discrimination."
+)
+
 ALPHA_DISCLAIMER = (
-    "Alpha release (v0.1.0). Methodology peer review by external fair lending expert "
+    "Alpha release (v0.2.0). Methodology peer review by external fair lending expert "
     "planned before v1.0.0. Use as a screening tool to identify cases warranting further "
     "analysis, not as a basis for enforcement or accusation."
 )
