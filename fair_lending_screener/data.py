@@ -56,10 +56,15 @@ _DTI_LABELS = ["dti_le35", "dti_36_42", "dti_43_49", "dti_ge50"]
 
 def check_data_source(timeout: int = 15) -> dict:
     """
-    Verify that the CFPB HMDA Data Browser API is reachable before analysis.
+    Optional diagnostic: probe whether the CFPB HMDA Data Browser API is reachable.
 
-    Called automatically by load_from_api(). Can also be called standalone
-    before a long analysis run to confirm endpoint health.
+    This is a standalone health check you can call before a long analysis run. As of
+    v0.2.1 it is NO LONGER called by load_from_api() — a pre-flight health gate was
+    causing every call to fail on cloud/datacenter IPs (the bare HEAD request drew an
+    HTTP 403 from the CFPB/Akamai edge), so the gate was removed from the data path.
+
+    The request now sends identifying headers (a non-default User-Agent, Accept, and
+    Accept-Language) so it is not mistaken for an anonymous bot client.
 
     Returns:
         dict with keys: reachable (bool), status_code (int), url (str)
@@ -67,11 +72,33 @@ def check_data_source(timeout: int = 15) -> dict:
     Raises:
         DataSourceError if the endpoint is unreachable or returns an unexpected status.
     """
+    from . import __version__ as _pkg_version
+
+    headers = {
+        "User-Agent": (
+            f"fair-lending-screener/{_pkg_version} "
+            "(+https://github.com/Jaypatel1511/fair-lending-screener)"
+        ),
+        "Accept": "text/csv, application/json;q=0.9, */*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
     try:
-        r = requests.head(CFPB_API_HEALTH_URL, timeout=timeout, allow_redirects=True)
-        # 200 or 400 are both fine — 400 means the endpoint exists but needs parameters
+        r = requests.head(
+            CFPB_API_HEALTH_URL, timeout=timeout, allow_redirects=True, headers=headers
+        )
+        # 200/400/405 all mean the endpoint exists — 400 = needs parameters,
+        # 405 = HEAD not allowed but the resource is there.
         if r.status_code in (200, 400, 405):
             return {"reachable": True, "status_code": r.status_code, "url": CFPB_API_HEALTH_URL}
+        if r.status_code == 403:
+            raise DataSourceError(
+                CFPB_API_HEALTH_URL,
+                "HTTP 403 Access Denied from the CFPB/Akamai edge. This is an edge/access "
+                "block commonly returned to cloud/datacenter environments (e.g. Google "
+                "Colab); it does NOT mean the CFPB API has moved or changed, and it is not "
+                "a problem with your query. Retry from a residential network, or use "
+                "load_from_file() with a manually downloaded CFPB modified-LAR CSV."
+            )
         raise DataSourceError(
             CFPB_API_HEALTH_URL,
             f"Unexpected HTTP status {r.status_code}. CFPB API may have moved or changed."
@@ -91,8 +118,14 @@ def load_from_api(
     Load HMDA LAR data from the CFPB Data Browser API.
 
     This is a thin wrapper around hmdaanalyzer.load_from_api() that:
-    1. Verifies endpoint health first (check_data_source)
+    1. Delegates the fetch to hmdaanalyzer (>=0.3.1, which sends an identifying
+       User-Agent so cloud/datacenter IPs are not 403'd by the CFPB/Akamai edge)
     2. Re-raises any hmdaanalyzer errors with context
+
+    Note: there is intentionally NO pre-flight health check here. A bare HEAD probe
+    (see check_data_source) draws an HTTP 403 from the edge on cloud IPs and would
+    short-circuit every call before the data fetch ran. check_data_source remains
+    available as an optional standalone diagnostic.
 
     Returns a raw DataFrame; call prepare_for_analysis() before running disparity analysis.
 
@@ -108,7 +141,6 @@ def load_from_api(
         property_value — controls required for the FFIEC-standard disparity model.
         Use 2018+ data for analysis with the full control set.
     """
-    check_data_source()
     try:
         from hmdaanalyzer import load_from_api as _load
         df = _load(year=year, state=state, lei=lei, county=county, limit=limit)

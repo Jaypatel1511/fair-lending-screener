@@ -6,6 +6,34 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.2.1] — 2026-06-24
+
+### Fixed
+
+- Removed the misleading pre-flight CFPB health-check gate from `load_from_api()`. On
+  cloud/datacenter environments (e.g. Google Colab) the gate's bare HEAD probe drew an
+  HTTP 403 "Access Denied" from the Akamai edge and short-circuited every call,
+  surfacing it as "CFPB API may have moved or changed". The gate no longer runs on the
+  data path.
+- `check_data_source()` now sends an identifying request-header bundle (a non-default
+  `User-Agent` plus `Accept` and `Accept-Language`) and, on a 403, reports a
+  CFPB/Akamai edge/access block (common from cloud notebooks) rather than a
+  moved/changed API. It is now an optional diagnostic and no longer gates
+  `load_from_api()`.
+- Dependency floor raised to `hmda-analyzer>=0.3.1`, whose delegated fetch sends the
+  same identifying `User-Agent`. That header bundle resolved the cloud 403 in a
+  reproduced manual probe; it is not a guarantee that cloud access always succeeds
+  (see Notes).
+
+### Notes
+
+- Cloud environments may still hit edge blocks under some conditions; errors now
+  describe the situation and the local/manual-download fallback.
+- The live 2019 calibration test is now fully offline (the delegated fetch is mocked);
+  the real-data [1.6, 2.2] band is verified out of band via a manual Colab probe.
+
+---
+
 ## [0.2.0] — 2026-05-22
 
 ### Added

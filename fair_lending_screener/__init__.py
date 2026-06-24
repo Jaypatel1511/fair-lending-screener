@@ -12,10 +12,11 @@ statistically significant adjusted disparity warranting further review.
 
 v0.1.0: Adjusted denial disparity analysis (logistic regression with controls).
 v0.2.0: Input validation, type-coercion fixes, release-process rebuild.
+v0.2.1: Remove cloud-IP-breaking CFPB health-check gate; identifying headers + honest 403 message.
 v0.3.0+: BISG proxy, pricing disparity, redlining geographic tests, peer benchmarking.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __author__ = "Jay Patel"
 __license__ = "MIT"
 

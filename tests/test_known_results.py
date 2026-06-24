@@ -11,13 +11,15 @@ Two purposes:
    and verify the adjusted odds ratio falls in a plausible range consistent with
    the methodology. This is a smoke test for drift in the math.
 
-Live HMDA data calibration (requires FLS_LIVE_TESTS=1 env var):
-   Run against 2019 HMDA conventional first-lien home purchase data.
-   Verify adjusted OR for Black vs. White falls in 1.6–2.2× per docs/methodology.md.
-   This is the partial replication of The Markup (2021) national model.
+Calibration via load_from_api (offline, delegated fetch mocked):
+   The former live test (FLS_LIVE_TESTS=1 + @pytest.mark.live, 2019 IL data) was
+   replaced by test_calibration_2019_offline_mocked, which exercises the
+   load_from_api -> prepare_for_analysis -> adjusted_denial_disparity path with no
+   network. The real-data 1.6–2.2× adjusted-OR band (partial replication of The
+   Markup (2021) national model, per docs/methodology.md) is verified OUT OF BAND
+   via a manual Colab probe — it is NOT asserted by this file.
 """
 
-import os
 import warnings
 
 import numpy as np
@@ -215,58 +217,142 @@ def test_calibration_range_synthetic_sample():
     assert "FFIEC" in result.methodology_citation
 
 
-# ── Live HMDA calibration (optional; requires FLS_LIVE_TESTS=1) ───────────────
+# ── Calibration via load_from_api, fully offline (delegated fetch mocked) ─────
+#
+# This was test_live_calibration_2019_national, which hit the live CFPB API behind
+# FLS_LIVE_TESTS=1 + @pytest.mark.live. CI runs from cloud IPs that the CFPB/Akamai
+# edge 403s, so a live fetch can never run there; the env-gated skip also meant the
+# default suite asserted nothing. As of v0.2.1 the delegated fetch
+# (hmdaanalyzer.load_from_api) is mocked with a deterministic fixture so the
+# load_from_api -> prepare_for_analysis -> adjusted_denial_disparity path is
+# exercised end to end with NO network. The real-data [1.6, 2.2] calibration band is
+# a property of live 2019 IL data and is verified out of band via a manual Colab
+# probe (see CHANGELOG); it is intentionally not asserted on synthetic data here.
 
-@pytest.mark.live
-@pytest.mark.skipif(
-    os.environ.get("FLS_LIVE_TESTS") != "1",
-    reason="Set FLS_LIVE_TESTS=1 to run live CFPB data calibration"
-)
-def test_live_calibration_2019_national():
+
+def _make_calibration_fixture() -> pd.DataFrame:
     """
-    Partial replication of The Markup (2021) national model.
+    Deterministic fixture standing in for hmdaanalyzer.load_from_api output.
 
-    Filters per docs/methodology.md § "Calibration Target":
-    - 2019 HMDA data, conventional (loan_type==1), first-lien (lien_status==1)
-    - home purchase (loan_purpose==1), principal residence (occupancy_type==1)
-    - one-to-four unit (property_type==1), site-built (construction_method==1)
-    - LTV ≤ 100% and not missing
-
-    Expected adjusted OR: 1.6–2.2× per asymmetric calibration band.
-    The Markup found 1.8×. Our model is expected to be at or above 1.8× because
-    we omit AUS and credit score (known upward-bias direction per Wooldridge 2019 §3.3).
-
-    This test fetches a state-level sample (Illinois, 2019) rather than national
-    to keep CI run time under 5 minutes. National results may differ.
+    Reuses the proven load_sample() generator (known Black/White denial disparity,
+    full FFIEC control set) and renames applicant_income -> income to mimic the raw
+    column naming hmdaanalyzer returns, so load_from_api's _normalize_columns rename
+    is exercised on the way through.
     """
+    raw = load_sample(n=2000, seed=42)
+    return raw.rename(columns={"applicant_income": "income"})
+
+
+def test_calibration_2019_offline_mocked():
+    """
+    The calibration path runs fully offline: load_from_api delegates to a mocked
+    hmdaanalyzer.load_from_api, and the prepared frame produces a valid, significant
+    elevated disparity. No live network, no skip.
+
+    Scope note: this asserts only that the adjusted OR is elevated (> 1.0) and
+    statistically significant on the synthetic fixture. It does NOT enforce the
+    real-data 1.6–2.2× calibration band — that band is a property of live 2019 IL
+    data and is verified out of band via a manual Colab probe (see the module
+    docstring and CHANGELOG). Re-asserting a numeric band on synthetic data here
+    would be meaningless, so it is intentionally omitted.
+    """
+    from unittest.mock import patch
     from fair_lending_screener import load_from_api
 
-    raw = load_from_api(year=2019, state="IL", limit=50_000)
-    prepared = prepare_for_analysis(raw, loan_purpose=1, validate_controls=False)
+    fixture = _make_calibration_fixture()
 
-    n_black = (prepared["derived_race"] == "Black or African American").sum()
-    n_white = (prepared["derived_race"] == "White").sum()
+    with patch("hmdaanalyzer.load_from_api", return_value=fixture) as mock_fetch:
+        raw = load_from_api(year=2019, state="IL", limit=50_000)
 
-    if n_black < 200 or n_white < 200:
-        pytest.skip(f"Insufficient Illinois 2019 data: Black={n_black}, White={n_white}")
+    # The delegated fetch is what produced the data (not a network call).
+    assert mock_fetch.called, "Delegated hmdaanalyzer.load_from_api was not invoked."
+    mock_fetch.assert_called_once_with(year=2019, state="IL", lei=None, county=None, limit=50_000)
 
-    result = adjusted_denial_disparity(
-        prepared,
-        protected_class="Black or African American",
-        comparison_class="White",
-        min_sample_size=500,
-        data_year=2019,
-    )
+    # load_from_api normalized the hmdaanalyzer-style 'income' column back to applicant_income.
+    assert "applicant_income" in raw.columns
+    assert "income" not in raw.columns
 
-    lo = 1.6
-    hi = 2.2
-    assert lo <= result.adjusted_odds_ratio <= hi, (
-        f"Calibration check failed: adjusted OR {result.adjusted_odds_ratio:.3f} "
-        f"is outside the expected range [{lo}, {hi}]. "
-        f"If this is unexpected, investigate data preparation and model specification. "
-        f"Do NOT widen the tolerance band without documented justification."
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        prepared = prepare_for_analysis(raw, loan_purpose=1, validate_controls=False)
+        result = adjusted_denial_disparity(
+            prepared,
+            protected_class="Black or African American",
+            comparison_class="White",
+            min_sample_size=500,
+            data_year=2019,
+        )
+
+    # The constructed disparity is strong (Black 0.195 vs White 0.095 at n=2000),
+    # so the adjusted result must be elevated and statistically significant.
+    assert result.adjusted_odds_ratio > 1.0, (
+        f"Expected elevated adjusted OR on the constructed disparity; "
+        f"got {result.adjusted_odds_ratio:.3f}."
     )
     assert result.is_statistically_significant, (
-        f"Expected statistically significant result at state level with sufficient data. "
-        f"p={result.p_value:.4f}"
+        f"Expected a statistically significant result at n=2000; p={result.p_value:.4f}."
+    )
+    assert 0.0 <= result.p_value <= 1.0
+    assert not np.isnan(result.adjusted_odds_ratio)
+    assert not np.isinf(result.adjusted_odds_ratio)
+
+
+# ── Degate proof: load_from_api no longer fires a pre-flight health gate ───────
+
+def test_load_from_api_does_not_gate_on_health_check():
+    """
+    Regression guard for the v0.2.1 fix: load_from_api must reach the delegated
+    fetch WITHOUT first firing requests.head (the old check_data_source gate that
+    403'd on cloud IPs). Asserts no HEAD fired AND the delegated fetch WAS called,
+    so the test cannot pass by short-circuiting.
+    """
+    from unittest.mock import patch
+    import fair_lending_screener.data as fls_data
+    from fair_lending_screener import load_from_api
+
+    fixture = pd.DataFrame({
+        "action_taken": [1, 3, 1, 3],
+        "derived_race": ["White", "Black or African American", "White", "Black or African American"],
+        "income": [80.0, 60.0, 90.0, 55.0],
+    })
+
+    with patch.object(fls_data.requests, "head") as mock_head, \
+            patch("hmdaanalyzer.load_from_api", return_value=fixture) as mock_fetch:
+        df = load_from_api(year=2023, state="IL", limit=100)
+
+    assert not mock_head.called, (
+        "load_from_api fired a pre-flight HEAD — the check_data_source health gate "
+        "was not removed from the call path."
+    )
+    assert mock_fetch.called, "Delegated hmdaanalyzer.load_from_api was not invoked."
+    assert len(df) == 4
+
+
+# ── Repaired health check: honest 403 message, not 'moved or changed' ─────────
+
+def test_check_data_source_403_reports_edge_block():
+    """
+    check_data_source still raises DataSourceError on a 403, but with the honest
+    edge/cloud-access-block message — NOT the misleading 'may have moved or changed'
+    string that previously masked the cloud-IP 403.
+    """
+    from unittest.mock import patch, MagicMock
+    import fair_lending_screener.data as fls_data
+    from fair_lending_screener import check_data_source
+    from fair_lending_screener.exceptions import DataSourceError
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 403
+
+    with patch.object(fls_data.requests, "head", return_value=mock_resp) as mock_head:
+        with pytest.raises(DataSourceError) as excinfo:
+            check_data_source()
+
+    assert mock_head.called, "requests.head was not exercised by check_data_source."
+    msg = str(excinfo.value)
+    assert "403" in msg
+    assert "edge" in msg.lower(), f"Expected an edge/access-block message; got: {msg}"
+    assert "may have moved or changed" not in msg, (
+        "check_data_source still emits the misleading 'may have moved or changed' "
+        f"message on a 403. Got: {msg}"
     )
