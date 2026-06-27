@@ -30,6 +30,7 @@ result = fls.adjusted_denial_disparity(
     df,
     protected_class="Black or African American",
     comparison_class="White",
+    data_year=2023,  # required; recorded in the provenance dict
 )
 
 # Step 4: Read the results
@@ -57,7 +58,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     df = fls.prepare_for_analysis(df_raw)
 
-result = fls.adjusted_denial_disparity(df)
+result = fls.adjusted_denial_disparity(df, data_year=2023)
 report = fls.generate_disparity_report(result, lender_name="Lender Name", year=2023)
 print(report)
 ```
@@ -73,7 +74,7 @@ from fair_lending_screener import (
 )
 
 try:
-    result = adjusted_denial_disparity(df, protected_class="Black or African American")
+    result = adjusted_denial_disparity(df, protected_class="Black or African American", data_year=2023)
 except InsufficientDataError as e:
     print(f"Not enough data: {e.actual} observations (need {e.minimum})")
 except InvalidProtectedClassError as e:
