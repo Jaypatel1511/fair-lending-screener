@@ -5,7 +5,7 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://github.com/Jaypatel1511/fair-lending-screener/actions/workflows/test.yml/badge.svg)](https://github.com/Jaypatel1511/fair-lending-screener/actions/workflows/test.yml)
 
-**Statistical disparate impact analysis for HMDA mortgage data — the methodology federal examiners use, open-sourced for community advocates and investigative journalists.**
+**Statistical lending-disparity screening for public HMDA mortgage data, using FFIEC-standard controls — open-sourced for community advocates and investigative journalists.**
 
 ---
 
@@ -16,7 +16,7 @@
 - Use binary logistic regression with FFIEC-standard controls (income, LTV, DTI, property value, MSA)
 - Report adjusted odds ratios with 95% confidence intervals and p-values
 - Generate journalist-legible Markdown reports explaining what was found and what it means
-- Cite the regulatory methodology (FFIEC Interagency Fair Lending Examination Procedures, 2009)
+- Cite the FFIEC fair-lending risk-factor framework it is informed by (Interagency Fair Lending Examination Procedures, 2009)
 - Tell you clearly what it cannot conclude
 
 **DOES NOT:**
@@ -26,7 +26,7 @@
 - Replace a full fair lending examination by federal regulators with access to internal lender data
 - Use black-box ML — every result is an auditable logistic regression you can reproduce
 
-> **Alpha release (v0.1.0).** Methodology peer review by an external fair lending expert is planned before v1.0.0. Use as a screening tool to identify cases warranting further analysis, not as a basis for enforcement or accusation.
+> **Alpha release (v0.2.2).** Methodology peer review by an external fair lending expert is planned before v1.0.0. Use as a screening tool to identify cases warranting further analysis, not as a basis for enforcement or accusation.
 
 ---
 
@@ -47,7 +47,7 @@ This package makes that analysis installable in 30 seconds.
 
 **Public HMDA data does not include:**
 
-1. **Credit score** — The most predictive underwriting variable, excluded from public HMDA by industry lobbying. Its absence means results are upper-bound estimates of the unexplained disparity.
+1. **Credit score** — The most predictive underwriting variable, not collected in public HMDA data. Its absence means results are upper-bound estimates of the unexplained disparity.
 2. **AUS recommendations** — Fannie/Freddie DU/LP decisions, the primary underwriting tool, are not public.
 3. **Asset and reserve data** — Not reported in HMDA.
 4. **Employment history** — Not reported in HMDA.
@@ -159,7 +159,7 @@ Both conditions must hold. A large odds ratio with p = 0.08 is not reported as s
 
 ### What Controls Are Used
 
-Per FFIEC Interagency Fair Lending Examination Procedures (2009):
+Controls (FFIEC-standard borrower and loan characteristics):
 
 | Control | Notes |
 |---|---|
@@ -199,21 +199,22 @@ Full methodology documentation is in [`docs/methodology.md`](docs/methodology.md
 - Dataset filters: conventional, first-lien, home purchase, site-built 1–4 unit, owner-occupied, LTV ≤ 100%
 - Calibration target: The Markup (2021) found 1.8× adjusted OR for Black vs. White applicants nationally. Expected range from this tool: 1.6–2.2× (above The Markup's figure because we omit AUS and credit score — known upward-bias direction per Wooldridge 2019 §3.3)
 
-**Regulatory basis:** FFIEC Interagency Fair Lending Examination Procedures (2009). This is the methodology OCC, Federal Reserve, FDIC, NCUA, and CFPB examiners use.
+**Regulatory context:** This tool is *informed by* the FFIEC Interagency Fair Lending Examination Procedures (2009), which identify lending disparities as fair-lending risk factors warranting further review. It is **not** the methodology examiners use: fair-lending examiners work from full loan files — including credit scores and AUS records obtained under supervisory authority — and, for lenders using credit scoring or with significant volume, follow specialized agency statistical procedures rather than a public-data model. This is a public-data screening tool, not a supervisory examination.
 
 ---
 
-## Coming in Future Versions
+## Roadmap
 
-**v0.2.0 (planned):**
-- Extended control set: AUS, credit model used, lender type, census tract demographics — toward full replication of The Markup's 17-variable specification
-- Pricing disparity analysis (linear regression on rate spread or APR)
-
-**v0.3.0+:**
+**Under consideration:**
+- Extended control set from public HMDA (census-tract demographics, additional loan attributes)
 - BISG race/ethnicity proxy for non-HMDA products (auto, student)
 - Redlining geographic analysis (census-tract lender presence)
 - Peer benchmarking (lender vs. market comparison)
 - Multilevel/hierarchical MSA modeling
+
+**Evaluated and deferred:**
+- **Pricing / rate-spread disparity** — public HMDA lacks the credit-risk control needed for a defensible adjusted estimate (evaluated in a multi-round methodology review).
+- **AUS / credit-model / full-loan-file controls** — not available in public HMDA.
 
 ---
 
@@ -238,7 +239,7 @@ Open a GitHub issue tagged [`methodology`](https://github.com/Jaypatel1511/fair-
 If you use this tool in research or journalism, please cite it:
 
 ```
-Patel, Jay (2026). fair-lending-screener (v0.1.0). MIT License.
+Patel, Jay (2026). fair-lending-screener (v0.2.2). MIT License.
 https://github.com/Jaypatel1511/fair-lending-screener
 ```
 

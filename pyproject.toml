@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fair-lending-screener"
-version = "0.2.1"
-description = "Statistical disparate impact analysis for HMDA data — the methodology federal examiners use, open-sourced for community advocates"
+version = "0.2.2"
+description = "Statistical lending-disparity screening for public HMDA data using FFIEC-standard controls — for community advocates and journalists"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]

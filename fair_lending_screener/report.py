@@ -236,12 +236,12 @@ def generate_disparity_report(
         lines.append("")
         lines.append(
             "**Statistical method:** Binary logistic regression (statsmodels.api.Logit). "
-            "The outcome variable is denial (1) vs. origination (0) per FFIEC exam procedures. "
+            "The outcome variable is denial (1) vs. origination (0). "
             "The coefficient on the protected class indicator is exponentiated to produce "
             "the adjusted odds ratio."
         )
         lines.append("")
-        lines.append("**Regulatory basis:**")
+        lines.append("**Regulatory context (informed by, not prescribed by):**")
         lines.append(f"- {FFIEC_FAIR_LENDING_PROCEDURES} ({FFIEC_URL})")
         lines.append(f"- {MARKUP_METHODOLOGY_CITATION}")
         lines.append("")

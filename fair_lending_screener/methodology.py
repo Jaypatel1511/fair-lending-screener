@@ -120,7 +120,7 @@ STANDARD_DISCLAIMER_NON_SIGNIFICANT = (
 )
 
 ALPHA_DISCLAIMER = (
-    "Alpha release (v0.2.0). Methodology peer review by external fair lending expert "
+    "Alpha release. Methodology peer review by external fair lending expert "
     "planned before v1.0.0. Use as a screening tool to identify cases warranting further "
     "analysis, not as a basis for enforcement or accusation."
 )
@@ -135,7 +135,7 @@ CALIBRATION_REFERENCE = MARKUP_NATIONAL_ODDS_RATIO
 
 STANDARD_LIMITATIONS = [
     "No credit score in public HMDA data — the single most predictive underwriting variable "
-    "(excluded by industry during Dodd-Frank rulemaking; 12 C.F.R. § 1003.4(a)(15) note).",
+    "(collected under supervisory authority but not released publicly; 12 C.F.R. § 1003.4(a)(15) note).",
 
     "No AUS recommendation in public HMDA data — Fannie/Freddie DU/LP decisions, the primary "
     "conventional loan underwriting tool, are not in the public file.",

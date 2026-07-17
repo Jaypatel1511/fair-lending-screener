@@ -12,7 +12,7 @@ Public HMDA data is the foundation of this tool, and it is incomplete. The follo
 
 ### 1. Credit Score
 **What:** The applicant's credit score (FICO or equivalent).  
-**Why missing:** Industry successfully lobbied for its exclusion during Dodd-Frank rulemaking. CFPB shares credit score with federal regulators under supervisory authority but not publicly (12 C.F.R. § 1003.4(a)(15) note).  
+**Why missing:** Public HMDA does not include credit score. The CFPB collects it under supervisory authority and shares it with federal regulators, but does not release it publicly (12 C.F.R. § 1003.4(a)(15) note).  
 **Why it matters:** Credit score is the single most predictive variable in mortgage underwriting. Its omission means the model cannot fully separate creditworthiness from protected class status.  
 **Bias direction:** If credit score gaps between groups reflect legitimate differences in credit history, omitting credit score overstates the racial disparity. If credit score gaps reflect structural discrimination in credit access, omitting it understates the true disparity. The direction is contested.
 

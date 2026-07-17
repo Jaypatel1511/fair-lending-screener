@@ -1,8 +1,9 @@
 """
-fair-lending-screener: Statistical disparate impact analysis for HMDA data.
+fair-lending-screener: Statistical lending-disparity screening for public HMDA data.
 
-The methodology federal examiners use, open-sourced for community advocates
-and investigative journalists.
+A public-data screening tool for community advocates and investigative journalists,
+using FFIEC-standard controls. Informed by the FFIEC fair-lending risk-factor
+framework — not the methodology examiners use (see the methodology doc).
 
 Scope: Mortgage lending (HMDA-reportable) only.
 Does NOT analyze Section 1071 small business lending data.
@@ -13,10 +14,13 @@ statistically significant adjusted disparity warranting further review.
 v0.1.0: Adjusted denial disparity analysis (logistic regression with controls).
 v0.2.0: Input validation, type-coercion fixes, release-process rebuild.
 v0.2.1: Remove cloud-IP-breaking CFPB health-check gate; identifying headers + honest 403 message.
-v0.3.0+: BISG proxy, pricing disparity, redlining geographic tests, peer benchmarking.
+v0.2.2: Accuracy corrections — regulatory-provenance claim, disparate-impact label, version strings.
+v0.3.0+: BISG proxy, redlining geographic tests, peer benchmarking.
+        (Pricing/rate-spread disparity evaluated and deferred — public HMDA lacks the
+         credit-risk control needed for a defensible adjusted estimate.)
 """
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 __author__ = "Jay Patel"
 __license__ = "MIT"
 

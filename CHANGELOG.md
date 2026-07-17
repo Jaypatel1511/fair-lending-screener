@@ -6,6 +6,37 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.2.2] — 2026-07-16
+
+Accuracy corrections only — no analytical or code-logic changes.
+
+### Fixed
+
+- **Corrected an inaccurate regulatory-provenance claim.** Prior versions described the
+  package as "the methodology federal examiners use" and stated the FFIEC Interagency Fair
+  Lending Examination Procedures "require" this logistic-regression model. The FFIEC
+  procedures identify lending disparities as risk factors and route statistical analysis of
+  credit-scored/high-volume lenders to specialized agency procedures with full loan-file
+  data; they do not prescribe a public-data model. Description, README, bundled methodology
+  doc, and generated report text now frame the tool as *informed by* the FFIEC risk-factor
+  framework — a public-data screening tool, not a supervisory examination.
+- **Relabeled "disparate impact analysis" → "lending-disparity screening."** An adjusted
+  regression that holds legitimate factors constant is the disparate-*treatment* statistical
+  approach, not disparate-impact; the prior label was inaccurate. The tool asserts neither
+  theory — it reports an unexplained adjusted disparity as a screening signal.
+- **Removed an unsourced causal claim** ("credit score excluded from public HMDA by industry
+  lobbying") in favor of a neutral statement of the data limitation.
+- **Corrected stale/inconsistent version strings** (repo mixed v0.1.0 and v0.2.0 while 0.2.1
+  was live; the generated report footer claimed v0.2.0). Versions set to 0.2.2; the report
+  disclaimer no longer hard-codes a version number.
+
+### Changed
+
+- **Roadmap:** pricing/rate-spread disparity moved from "planned" to "evaluated and deferred"
+  — public HMDA lacks the credit-risk control required for a defensible adjusted estimate.
+
+---
+
 ## [0.2.1] — 2026-06-24
 
 ### Fixed

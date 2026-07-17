@@ -1,7 +1,7 @@
 # Fair Lending Screener: Statistical Methodology
 
-**Version:** 0.2.0  
-**Last updated:** 2026-05-22  
+**Version:** 0.2.2  
+**Last updated:** 2026-07-16  
 **Status:** Alpha — methodology peer review by external fair lending expert planned before v1.0.0
 
 ---
@@ -25,9 +25,9 @@ This is not a finding of discrimination. It is a screening signal warranting fur
 **Citation:** FFIEC Interagency Fair Lending Examination Procedures (August 2009 edition with subsequent updates)  
 **Publisher:** Federal Financial Institutions Examination Council  
 **URL:** https://www.ffiec.gov/PDF/fairlend.pdf  
-**Status:** The canonical reference used by OCC, Federal Reserve, FDIC, NCUA, and CFPB examiners
+**Role here:** The federal interagency framework for fair-lending examinations. It identifies fair-lending *risk factors* and, for statistical analysis of credit-scored or high-volume lenders, routes examiners to specialized agency procedures conducted with full loan-file data — it does not prescribe the public-data model used here.
 
-The FFIEC procedures establish that underwriting disparity analysis uses logistic regression to test whether denial rates differ on a prohibited basis (race, ethnicity, sex, age, national origin) **after accounting for objective credit and loan attributes** that legitimately drive underwriting decisions. The procedures require:
+The FFIEC procedures identify underwriting and pricing disparities as fair-lending risk factors warranting review, and — for lenders using credit scoring or with significant lending volume — direct examiners to specialized agency statistical procedures conducted with full loan-file data (including credit scores and AUS records). They do **not** prescribe a specific public-data model or require logistic regression. This package applies a standard adjusted logistic-regression disparity screen — the approach used in academic fair-lending research and by investigative outlets such as The Markup (2021) — to publicly available HMDA data. Informed by the FFIEC risk-factor framework, it uses:
 
 - A binary outcome variable (denied vs. originated)
 - A protected class indicator as the variable of interest
@@ -35,7 +35,7 @@ The FFIEC procedures establish that underwriting disparity analysis uses logisti
 - Odds ratio as the primary output statistic
 - Reporting of confidence intervals and statistical significance
 
-The FFIEC exam procedures form the legal and methodological baseline for all fair lending examinations under the Equal Credit Opportunity Act (15 U.S.C. § 1691 et seq.) and the Fair Housing Act (42 U.S.C. § 3605).
+The FFIEC exam procedures are the interagency baseline for fair-lending *examinations* under the Equal Credit Opportunity Act (15 U.S.C. § 1691 et seq.) and the Fair Housing Act (42 U.S.C. § 3605); this package is a public-data screening tool informed by that framework, not a substitute for a supervisory examination.
 
 ### Secondary Source: The Markup Methodology (2021)
 
@@ -421,11 +421,11 @@ When convergence fails, `ModelConvergenceError` is raised with the iteration cou
 
 ## Deferred to v0.3.0+
 
-The following analyses are methodologically sound but out of scope for v0.2.0:
+The following analyses are out of scope for the current release (feasibility varies — see notes):
 
 - **BISG proxy analysis:** For product types where race/ethnicity is not collected (auto, student, HELOC not under Reg C). Port of CFPB Stata code to Python.
 - **Extended control set:** Co-applicant variables, AUS recommendation, credit model used, lender type/size, census tract demographic controls — moving toward full replication of The Markup's 17-variable specification.
-- **Pricing disparity analysis:** Linear regression on rate spread or APR as outcome variable.
+- **Pricing / rate-spread disparity:** Evaluated and **deferred** — public HMDA lacks the credit-risk control needed for a defensible adjusted rate estimate (the note rate is mechanically priced off credit score via GSE LLPA pass-through, and no usable public tract-level credit proxy exists). Not currently feasible on public data.
 - **Redlining geographic analysis:** Census-tract-level analysis of lender presence in majority-minority areas.
 - **Peer benchmarking:** Comparison of lender-specific rates against peer group and HMDA aggregate.
 - **Multilevel / hierarchical modeling:** Mixed-effects logit for MSA random effects, replacing the current MSA dummy approach.

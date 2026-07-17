@@ -2,16 +2,17 @@ cff-version: 1.2.0
 message: "If you use this software in research or journalism, please cite it as below."
 type: software
 title: "fair-lending-screener"
-version: 0.1.0
-date-released: "2026-05-21"
+version: 0.2.2
+date-released: "2026-07-16"
 url: "https://github.com/Jaypatel1511/fair-lending-screener"
 repository-code: "https://github.com/Jaypatel1511/fair-lending-screener"
 license: MIT
 abstract: >
-  Statistical disparate impact analysis for HMDA mortgage lending data.
-  Implements adjusted denial disparity analysis using binary logistic regression
-  with FFIEC-standard controls. Methodology follows FFIEC Interagency Fair Lending
-  Examination Procedures (2009) and The Markup (2021) national model specification.
+  Statistical lending-disparity screening for public HMDA mortgage data.
+  Implements adjusted denial-disparity analysis using binary logistic regression
+  with FFIEC-standard controls. Informed by the FFIEC Interagency Fair Lending
+  Examination Procedures (2009) risk-factor framework and The Markup (2021) model
+  specification. A public-data screening tool, not a supervisory examination.
   Intended for community advocates, investigative journalists, academic researchers,
   and fair housing nonprofits. Not a substitute for full fair lending examination.
 authors:
